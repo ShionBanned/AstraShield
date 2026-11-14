@@ -1,0 +1,49 @@
+﻿/* AstraShield Ultra - Master Cosmetic Stylesheet */
+ins.adsbygoogle,
+[id^="google_ads_iframe"],
+[id*="ad-slot"],
+[class*="ad-slot"],
+.ad-banner,
+.ads-wrapper,
+.ad-holder,
+.ad_unit,
+.trc_related_container,
+.OUTBRAIN,
+div[data-ad-unit],
+div[data-google-query-id],
+.advertisement,
+.pub_300x250,
+.pub_728x90,
+.popads,
+.exoclick,
+.adsterra,
+#taboola-below-article-thumbnails,
+div[class*="SponsoredBy"],
+div[class*="sponsored-post"],
+
+/* YouTube Ads & Banners */
+ytd-ad-slot-renderer,
+ytd-in-feed-ad-layout-renderer,
+ytd-banner-promo-renderer,
+ytd-promoted-sparkles-web-renderer,
+ytd-promoted-video-renderer,
+ytd-display-ad-renderer,
+#player-ads,
+.video-ads .ytp-ad-player-overlay,
+.video-ads .ytp-ad-player-overlay-layout,
+.ytp-ad-overlay-container,
+.ytp-ad-message-container,
+.ytp-ad-progress-list,
+ytd-action-companion-ad-renderer,
+ytd-statement-banner-renderer,
+ytd-engagement-panel-section-list-renderer[target-id^="engagement-panel-ads"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
