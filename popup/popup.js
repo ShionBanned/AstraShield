@@ -1,45 +1,78 @@
-﻿// =========================================================================
+// =========================================================================
 // AstraShield Ultra - Popup Interaction Controller
 // =========================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
   let currentTabId = null;
   let currentDomain = '';
+  let isRestrictedPage = false;
 
   // DOM Elements
   const brandIcon = document.getElementById('brandIcon');
   const statusBadge = document.getElementById('statusBadge');
   const statusText = document.getElementById('statusText');
+  const globalToggleContainer = document.getElementById('globalToggleContainer');
   const globalToggle = document.getElementById('globalToggle');
   const globalDesc = document.getElementById('globalDesc');
   const currentDomainEl = document.getElementById('currentDomain');
   const siteStatusText = document.getElementById('siteStatusText');
   const sitePauseToggle = document.getElementById('sitePauseToggle');
   const reloadPrompt = document.getElementById('reloadPrompt');
+  const modulesCard = document.getElementById('modulesCard');
   const pausedSitesCountEl = document.getElementById('pausedSitesCount');
+  const pausedDrawer = document.getElementById('pausedDrawer');
+  const pausedListContainer = document.getElementById('pausedListContainer');
+  const clearAllPausedBtn = document.getElementById('clearAllPausedBtn');
 
   // Shields elements
   const shieldYoutube = document.getElementById('shieldYoutube');
   const shieldPopups = document.getElementById('shieldPopups');
   const shieldStealth = document.getElementById('shieldStealth');
   const shieldCosmetic = document.getElementById('shieldCosmetic');
+  const shieldInputs = [shieldYoutube, shieldPopups, shieldStealth, shieldCosmetic];
+
+  function normalizeDomain(rawDomain) {
+    if (!rawDomain || typeof rawDomain !== 'string') return '';
+    return rawDomain.trim().toLowerCase().replace(/^www\./, '');
+  }
+
+  function isHostInPausedList(host, list) {
+    const cleanHost = normalizeDomain(host);
+    if (!cleanHost || !Array.isArray(list)) return false;
+    return list.some(item => {
+      const d = normalizeDomain(item);
+      return d && (cleanHost === d || cleanHost.endsWith('.' + d));
+    });
+  }
 
   // 1. Get current active tab domain
   try {
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs && tabs[0] && tabs[0].url) {
-      currentTabId = tabs[0].id;
-      const url = new URL(tabs[0].url);
-      if (url.protocol.startsWith('http')) {
-        currentDomain = url.hostname;
-        currentDomainEl.textContent = currentDomain;
+    const activeTab = tabs && tabs[0];
+    if (activeTab) {
+      currentTabId = activeTab.id;
+      if (activeTab.url) {
+        const url = new URL(activeTab.url);
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+          currentDomain = normalizeDomain(url.hostname);
+          currentDomainEl.textContent = currentDomain;
+        } else {
+          isRestrictedPage = true;
+          currentDomainEl.textContent = 'Página Interna';
+          sitePauseToggle.disabled = true;
+        }
       } else {
-        currentDomain = 'Página Interna';
-        currentDomainEl.textContent = currentDomain;
+        isRestrictedPage = true;
+        currentDomainEl.textContent = 'Página del Sistema';
         sitePauseToggle.disabled = true;
       }
+    } else {
+      isRestrictedPage = true;
+      currentDomainEl.textContent = 'Navegador';
+      sitePauseToggle.disabled = true;
     }
-  } catch (e) {
+  } catch (_) {
+    isRestrictedPage = true;
     currentDomainEl.textContent = 'Navegador';
     sitePauseToggle.disabled = true;
   }
@@ -47,8 +80,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 2. Load stored settings
   const data = await chrome.storage.local.get(['globalEnabled', 'pausedDomains', 'shields']);
   const globalEnabled = data.globalEnabled !== false;
-  const pausedDomains = Array.isArray(data.pausedDomains) ? data.pausedDomains : [];
-  const isSitePaused = currentDomain && pausedDomains.includes(currentDomain);
+  let pausedDomains = Array.isArray(data.pausedDomains)
+    ? Array.from(new Set(data.pausedDomains.map(normalizeDomain).filter(Boolean)))
+    : [];
+  const isSitePaused = !isRestrictedPage && isHostInPausedList(currentDomain, pausedDomains);
   const shields = data.shields || {
     youtube: true,
     popups: true,
@@ -64,10 +99,57 @@ document.addEventListener('DOMContentLoaded', async () => {
   shieldStealth.checked = shields.stealth !== false;
   shieldCosmetic.checked = shields.cosmetic !== false;
 
-  updateUI(globalEnabled, isSitePaused, pausedDomains.length);
+  updateUI(globalEnabled, isSitePaused, pausedDomains);
 
-  function updateUI(isGlobalOn, isDomainPaused, pausedCount) {
+  function renderPausedDrawer(list) {
+    pausedListContainer.innerHTML = '';
+    if (!list || list.length === 0) {
+      pausedDrawer.style.display = 'none';
+      return;
+    }
+
+    list.forEach(domain => {
+      const row = document.createElement('div');
+      row.className = 'paused-domain-item';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = domain;
+
+      const removeBtn = document.createElement('span');
+      removeBtn.className = 'remove-domain-btn';
+      removeBtn.textContent = 'Reactivar';
+      removeBtn.addEventListener('click', async () => {
+        const res = await chrome.runtime.sendMessage({
+          action: 'toggleDomain',
+          domain,
+          paused: false
+        });
+        pausedDomains = (res && Array.isArray(res.pausedDomains)) ? res.pausedDomains : pausedDomains.filter(d => d !== domain);
+        const nowPaused = !isRestrictedPage && isHostInPausedList(currentDomain, pausedDomains);
+        sitePauseToggle.checked = nowPaused;
+        updateUI(globalToggle.checked, nowPaused, pausedDomains);
+        if (domain === currentDomain) {
+          showReloadNotice();
+        }
+      });
+
+      row.appendChild(nameSpan);
+      row.appendChild(removeBtn);
+      pausedListContainer.appendChild(row);
+    });
+  }
+
+  function updateUI(isGlobalOn, isDomainPaused, list) {
+    const pausedCount = Array.isArray(list) ? list.length : 0;
     pausedSitesCountEl.textContent = `${pausedCount} sitio${pausedCount === 1 ? '' : 's'} pausado${pausedCount === 1 ? '' : 's'}`;
+    renderPausedDrawer(list);
+
+    shieldInputs.forEach(input => {
+      input.disabled = !isGlobalOn;
+    });
+    if (modulesCard) {
+      modulesCard.classList.toggle('disabled-card', !isGlobalOn);
+    }
 
     if (!isGlobalOn) {
       brandIcon.className = 'brand-icon off';
@@ -76,6 +158,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       globalDesc.textContent = 'Protección pausada globalmente';
       siteStatusText.textContent = 'Desactivado';
       siteStatusText.style.color = 'var(--accent-red)';
+      sitePauseToggle.disabled = true;
+    } else if (isRestrictedPage) {
+      brandIcon.className = 'brand-icon';
+      statusBadge.className = 'status-badge';
+      statusText.textContent = 'PROTEGIDO';
+      globalDesc.textContent = 'Bloqueando rastreadores y anuncios';
+      siteStatusText.textContent = 'No aplicable';
+      siteStatusText.style.color = 'var(--text-muted)';
       sitePauseToggle.disabled = true;
     } else if (isDomainPaused) {
       brandIcon.className = 'brand-icon paused';
@@ -97,31 +187,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function showReloadNotice() {
-    reloadPrompt.style.display = 'flex';
+    if (!isRestrictedPage) {
+      reloadPrompt.style.display = 'flex';
+    }
   }
 
-  // 3. Global Toggle Handler
+  // 3. Global Toggle Handler (including clicking hero card)
+  globalToggleContainer.addEventListener('click', (e) => {
+    if (e.target.closest('label.switch')) return;
+    globalToggle.checked = !globalToggle.checked;
+    globalToggle.dispatchEvent(new Event('change'));
+  });
+
   globalToggle.addEventListener('change', async () => {
     const isEnabled = globalToggle.checked;
     await chrome.runtime.sendMessage({ action: 'toggleGlobal', enabled: isEnabled });
     const freshData = await chrome.storage.local.get(['pausedDomains']);
-    const list = Array.isArray(freshData.pausedDomains) ? freshData.pausedDomains : [];
-    updateUI(isEnabled, list.includes(currentDomain), list.length);
+    pausedDomains = Array.isArray(freshData.pausedDomains) ? freshData.pausedDomains.map(normalizeDomain).filter(Boolean) : [];
+    const nowPaused = !isRestrictedPage && isHostInPausedList(currentDomain, pausedDomains);
+    updateUI(isEnabled, nowPaused, pausedDomains);
     showReloadNotice();
   });
 
   // 4. Per-Site Pause Toggle Handler
   sitePauseToggle.addEventListener('change', async () => {
-    if (!currentDomain || currentDomain.startsWith('Página')) return;
+    if (isRestrictedPage || !currentDomain) return;
     const isPaused = sitePauseToggle.checked;
-    await chrome.runtime.sendMessage({
+    const res = await chrome.runtime.sendMessage({
       action: 'toggleDomain',
       domain: currentDomain,
       paused: isPaused
     });
-    const freshData = await chrome.storage.local.get(['pausedDomains', 'globalEnabled']);
-    const list = Array.isArray(freshData.pausedDomains) ? freshData.pausedDomains : [];
-    updateUI(freshData.globalEnabled !== false, isPaused, list.length);
+    pausedDomains = (res && Array.isArray(res.pausedDomains)) ? res.pausedDomains : pausedDomains;
+    updateUI(globalToggle.checked, isPaused, pausedDomains);
     showReloadNotice();
   });
 
@@ -144,7 +242,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 6. Reload Prompt Action
+  // 6. Paused Sites List Drawer & Clear Action
+  pausedSitesCountEl.addEventListener('click', () => {
+    if (!pausedDomains || pausedDomains.length === 0) return;
+    const isVisible = pausedDrawer.style.display === 'block';
+    pausedDrawer.style.display = isVisible ? 'none' : 'block';
+  });
+
+  clearAllPausedBtn.addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ action: 'clearPausedDomains' });
+    pausedDomains = [];
+    sitePauseToggle.checked = false;
+    pausedDrawer.style.display = 'none';
+    updateUI(globalToggle.checked, false, pausedDomains);
+    showReloadNotice();
+  });
+
+  // 7. Reload Prompt Action
   reloadPrompt.addEventListener('click', () => {
     if (currentTabId) {
       chrome.tabs.reload(currentTabId);

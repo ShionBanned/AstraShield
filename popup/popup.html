@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -214,6 +214,11 @@
       transform: translateX(20px);
     }
 
+    input:disabled + .slider {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     /* Site Card */
     .site-card {
       background: var(--card-bg);
@@ -276,7 +281,6 @@
       border-radius: 6px;
       font-size: 11px;
       color: var(--accent-blue);
-      display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
@@ -295,6 +299,11 @@
       padding: 8px 12px;
       margin-bottom: 12px;
       backdrop-filter: blur(8px);
+      transition: opacity 0.2s ease;
+    }
+
+    .modules-card.disabled-card {
+      opacity: 0.55;
     }
 
     .module-item {
@@ -368,6 +377,61 @@
       font-size: 10px;
       color: var(--text-muted);
       margin-top: 2px;
+    }
+
+    /* Paused Domains Drawer */
+    .paused-drawer {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      max-height: 110px;
+      overflow-y: auto;
+    }
+
+    .paused-drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .clear-all-btn {
+      color: var(--accent-red);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .clear-all-btn:hover {
+      text-decoration: underline;
+    }
+
+    .paused-domain-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      padding: 3px 0;
+      color: #E2E8F0;
+    }
+
+    .remove-domain-btn {
+      color: var(--accent-amber);
+      cursor: pointer;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.12);
+    }
+
+    .remove-domain-btn:hover {
+      background: rgba(245, 158, 11, 0.25);
     }
 
     /* Footer */
@@ -445,7 +509,7 @@
   </div>
 
   <!-- Granular Modules -->
-  <div class="modules-card">
+  <div id="modulesCard" class="modules-card">
     <div class="module-item">
       <div class="module-info">
         <span class="module-name">YouTube Ad Shield</span>
@@ -494,13 +558,22 @@
   <!-- Stats Grid -->
   <div class="stats-grid">
     <div class="stat-box">
-      <div class="stat-val">47,490</div>
-      <div class="stat-lbl">Reglas DNR (EasyList)</div>
+      <div class="stat-val">46,970</div>
+      <div class="stat-lbl">Reglas DNR Puras</div>
     </div>
     <div class="stat-box">
       <div class="stat-val" style="color: var(--accent-green);">0</div>
       <div class="stat-lbl">Lista Blanca Corporativa</div>
     </div>
+  </div>
+
+  <!-- Paused Sites Drawer -->
+  <div id="pausedDrawer" class="paused-drawer">
+    <div class="paused-drawer-header">
+      <span>Sitios en lista blanca local</span>
+      <span id="clearAllPausedBtn" class="clear-all-btn">Reactivar todos</span>
+    </div>
+    <div id="pausedListContainer"></div>
   </div>
 
   <!-- Footer -->

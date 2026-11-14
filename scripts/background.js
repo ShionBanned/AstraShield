@@ -1,142 +1,252 @@
-﻿// =========================================================================
+// =========================================================================
 // AstraShield Ultra - Service Worker & State Synchronizer
 // =========================================================================
 
-function domainToRuleId(domain) {
-  let hash = 0;
-  for (let i = 0; i < domain.length; i++) {
-    hash = ((hash << 5) - hash) + domain.charCodeAt(i);
-    hash |= 0;
-  }
-  return 800000 + (Math.abs(hash) % 90000);
+const DEFAULT_SHIELDS = {
+  youtube: true,
+  popups: true,
+  stealth: true,
+  cosmetic: true
+};
+
+const STATIC_RULESETS = ['ruleset_easylist', 'network_block_rules'];
+const DYNAMIC_RULE_BASE_ID = 800001;
+
+function normalizeDomain(rawDomain) {
+  if (!rawDomain || typeof rawDomain !== 'string') return '';
+  return rawDomain.trim().toLowerCase().replace(/^www\./, '');
 }
 
-// Initialize default state
-chrome.runtime.onInstalled.addListener(async () => {
-  const data = await chrome.storage.local.get(['globalEnabled', 'pausedDomains', 'shields', 'stats']);
-  const defaults = {
-    globalEnabled: data.globalEnabled !== undefined ? data.globalEnabled : true,
-    pausedDomains: Array.isArray(data.pausedDomains) ? data.pausedDomains : [],
-    shields: data.shields || {
-      youtube: true,
-      popups: true,
-      stealth: true,
-      cosmetic: true
-    },
-    stats: data.stats || {
-      totalBlocked: 0
-    }
-  };
-  await chrome.storage.local.set(defaults);
-  updateBadge(defaults.globalEnabled);
-});
+function isHostMatchingDomain(hostname, domain) {
+  const cleanHost = normalizeDomain(hostname);
+  const cleanDomain = normalizeDomain(domain);
+  if (!cleanHost || !cleanDomain) return false;
+  return cleanHost === cleanDomain || cleanHost.endsWith('.' + cleanDomain);
+}
 
-// Update toolbar icon badge
+function extractDomainFromUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return '';
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return normalizeDomain(url.hostname);
+    }
+  } catch (_) {}
+  return '';
+}
+
+async function getStoredState() {
+  const data = await chrome.storage.local.get(['globalEnabled', 'pausedDomains', 'shields', 'stats']);
+  const globalEnabled = data.globalEnabled !== false;
+  const rawDomains = Array.isArray(data.pausedDomains) ? data.pausedDomains : [];
+  const pausedDomains = Array.from(
+    new Set(rawDomains.map(normalizeDomain).filter(Boolean))
+  );
+  const shields = {
+    ...DEFAULT_SHIELDS,
+    ...(data.shields && typeof data.shields === 'object' ? data.shields : {})
+  };
+  const stats = data.stats && typeof data.stats === 'object' ? data.stats : { totalBlocked: 0 };
+  return { globalEnabled, pausedDomains, shields, stats };
+}
+
+async function syncStaticRulesets(globalEnabled) {
+  try {
+    if (globalEnabled) {
+      await chrome.declarativeNetRequest.updateEnabledRulesets({
+        enableRulesetIds: STATIC_RULESETS
+      });
+    } else {
+      await chrome.declarativeNetRequest.updateEnabledRulesets({
+        disableRulesetIds: STATIC_RULESETS
+      });
+    }
+  } catch (e) {
+    console.error('[AstraShield] Failed to update static rulesets:', e);
+  }
+}
+
+async function syncDynamicPauseRules(pausedDomains) {
+  try {
+    const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
+    const removeRuleIds = existingRules.map(r => r.id);
+    const addRules = [];
+
+    pausedDomains.forEach((rawDomain, index) => {
+      const domain = normalizeDomain(rawDomain);
+      if (!domain) return;
+
+      const frameRuleId = DYNAMIC_RULE_BASE_ID + index * 2;
+      const subresourceRuleId = frameRuleId + 1;
+
+      // Rule 1: Whitelist frame hierarchy for paused domain (requires main_frame/sub_frame)
+      addRules.push({
+        id: frameRuleId,
+        priority: 5000,
+        action: { type: 'allowAllRequests' },
+        condition: {
+          requestDomains: [domain],
+          resourceTypes: ['main_frame', 'sub_frame']
+        }
+      });
+
+      // Rule 2: Whitelist all sub-requests initiated by paused domain
+      addRules.push({
+        id: subresourceRuleId,
+        priority: 5000,
+        action: { type: 'allow' },
+        condition: {
+          initiatorDomains: [domain]
+        }
+      });
+    });
+
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds,
+      addRules
+    });
+  } catch (e) {
+    console.error('[AstraShield] Failed to sync dynamic pause rules:', e);
+  }
+}
+
 function updateBadge(globalEnabled, currentDomainPaused = false) {
   if (!globalEnabled) {
     chrome.action.setBadgeText({ text: 'OFF' });
-    chrome.action.setBadgeBackgroundColor({ color: '#DC2626' }); // Red
+    chrome.action.setBadgeBackgroundColor({ color: '#DC2626' });
   } else if (currentDomainPaused) {
     chrome.action.setBadgeText({ text: 'PAUSE' });
-    chrome.action.setBadgeBackgroundColor({ color: '#F59E0B' }); // Amber
+    chrome.action.setBadgeBackgroundColor({ color: '#F59E0B' });
   } else {
     chrome.action.setBadgeText({ text: 'ON' });
-    chrome.action.setBadgeBackgroundColor({ color: '#10B981' }); // Green
+    chrome.action.setBadgeBackgroundColor({ color: '#10B981' });
   }
 }
 
-// Handle messages from popup
+async function refreshBadgeForActiveTab() {
+  try {
+    const { globalEnabled, pausedDomains } = await getStoredState();
+    if (!globalEnabled) {
+      updateBadge(false, false);
+      return;
+    }
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const activeTab = tabs && tabs[0];
+    const domain = activeTab && activeTab.url ? extractDomainFromUrl(activeTab.url) : '';
+    const isPaused = Boolean(
+      domain && pausedDomains.some(d => isHostMatchingDomain(domain, d))
+    );
+    updateBadge(true, isPaused);
+  } catch (_) {
+    updateBadge(true, false);
+  }
+}
+
+async function initializeEngine() {
+  const state = await getStoredState();
+  await chrome.storage.local.set(state);
+  await syncStaticRulesets(state.globalEnabled);
+  await syncDynamicPauseRules(state.pausedDomains);
+  await refreshBadgeForActiveTab();
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  initializeEngine();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  initializeEngine();
+});
+
+chrome.tabs.onActivated.addListener(() => {
+  refreshBadgeForActiveTab();
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab && tab.active && (changeInfo.url || changeInfo.status === 'complete')) {
+    refreshBadgeForActiveTab();
+  }
+});
+
+// Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (!request || !request.action) return false;
+
   if (request.action === 'toggleGlobal') {
-    handleToggleGlobal(request.enabled).then(sendResponse);
+    handleToggleGlobal(Boolean(request.enabled)).then(sendResponse);
     return true;
   }
   if (request.action === 'toggleDomain') {
-    handleToggleDomain(request.domain, request.paused).then(sendResponse);
+    handleToggleDomain(request.domain, Boolean(request.paused)).then(sendResponse);
+    return true;
+  }
+  if (request.action === 'clearPausedDomains') {
+    handleClearPausedDomains().then(sendResponse);
     return true;
   }
   if (request.action === 'toggleShield') {
-    handleToggleShield(request.shield, request.enabled).then(sendResponse);
+    handleToggleShield(request.shield, Boolean(request.enabled)).then(sendResponse);
     return true;
   }
   if (request.action === 'getDomainStatus') {
     handleGetDomainStatus(request.domain).then(sendResponse);
     return true;
   }
+  return false;
 });
 
 async function handleToggleGlobal(enabled) {
   await chrome.storage.local.set({ globalEnabled: enabled });
-  if (enabled) {
-    await chrome.declarativeNetRequest.updateEnabledRulesets({
-      enableRulesetIds: ['ruleset_easylist', 'network_block_rules']
-    });
-    updateBadge(true);
-  } else {
-    await chrome.declarativeNetRequest.updateEnabledRulesets({
-      disableRulesetIds: ['ruleset_easylist', 'network_block_rules']
-    });
-    updateBadge(false);
-  }
+  await syncStaticRulesets(enabled);
+  await refreshBadgeForActiveTab();
   return { success: true, globalEnabled: enabled };
 }
 
-async function handleToggleDomain(domain, paused) {
-  const data = await chrome.storage.local.get(['pausedDomains', 'globalEnabled']);
-  let pausedList = Array.isArray(data.pausedDomains) ? data.pausedDomains : [];
-  const ruleId = domainToRuleId(domain);
-
-  if (paused) {
-    if (!pausedList.includes(domain)) {
-      pausedList.push(domain);
-    }
-    // Add dynamic allow rule with top priority 5000
-    try {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [ruleId],
-        addRules: [{
-          id: ruleId,
-          priority: 5000,
-          action: { type: 'allowAllRequests' },
-          condition: {
-            initiatorDomains: [domain],
-            requestDomains: [domain]
-          }
-        }]
-      });
-    } catch (e) {
-      console.error('Error adding allow rule for domain', domain, e);
-    }
-  } else {
-    pausedList = pausedList.filter(d => d !== domain);
-    try {
-      await chrome.declarativeNetRequest.updateDynamicRules({
-        removeRuleIds: [ruleId]
-      });
-    } catch (e) {
-      console.error('Error removing allow rule for domain', domain, e);
-    }
+async function handleToggleDomain(rawDomain, paused) {
+  const domain = normalizeDomain(rawDomain);
+  if (!domain) {
+    return { success: false, error: 'Invalid domain' };
   }
 
-  await chrome.storage.local.set({ pausedDomains: pausedList });
-  updateBadge(data.globalEnabled, paused);
-  return { success: true, domain, paused };
+  const { globalEnabled, pausedDomains } = await getStoredState();
+  let updatedList = pausedDomains.filter(d => !isHostMatchingDomain(d, domain) && !isHostMatchingDomain(domain, d));
+
+  if (paused) {
+    updatedList.push(domain);
+  }
+
+  await chrome.storage.local.set({ pausedDomains: updatedList });
+  await syncDynamicPauseRules(updatedList);
+  await refreshBadgeForActiveTab();
+  return { success: true, domain, paused, pausedDomains: updatedList, globalEnabled };
+}
+
+async function handleClearPausedDomains() {
+  await chrome.storage.local.set({ pausedDomains: [] });
+  await syncDynamicPauseRules([]);
+  await refreshBadgeForActiveTab();
+  return { success: true, pausedDomains: [] };
 }
 
 async function handleToggleShield(shield, enabled) {
-  const data = await chrome.storage.local.get(['shields']);
-  const shields = data.shields || {};
-  shields[shield] = enabled;
-  await chrome.storage.local.set({ shields });
+  const { shields } = await getStoredState();
+  if (Object.prototype.hasOwnProperty.call(DEFAULT_SHIELDS, shield)) {
+    shields[shield] = enabled;
+    await chrome.storage.local.set({ shields });
+  }
   return { success: true, shields };
 }
 
-async function handleGetDomainStatus(domain) {
-  const data = await chrome.storage.local.get(['globalEnabled', 'pausedDomains', 'shields']);
-  const isPausedOnDomain = Array.isArray(data.pausedDomains) && data.pausedDomains.includes(domain);
+async function handleGetDomainStatus(rawDomain) {
+  const domain = normalizeDomain(rawDomain);
+  const { globalEnabled, pausedDomains, shields } = await getStoredState();
+  const isPausedOnDomain = Boolean(
+    domain && pausedDomains.some(d => isHostMatchingDomain(domain, d))
+  );
   return {
-    globalEnabled: data.globalEnabled !== false,
-    isPausedOnDomain: isPausedOnDomain,
-    shields: data.shields || {}
+    globalEnabled,
+    isPausedOnDomain,
+    pausedDomains,
+    shields
   };
 }

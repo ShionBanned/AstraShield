@@ -1,83 +1,200 @@
-﻿[
+[
   {
     "id": 1,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||doubleclick.net^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping", "media"]
     }
   },
   {
     "id": 2,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||googlesyndication.com^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping", "media"]
     }
   },
   {
     "id": 3,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||googleadservices.com^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
   {
     "id": 4,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||taboola.com^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
   {
     "id": 5,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||outbrain.com^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
   {
     "id": 6,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||adnxs.com^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
   {
     "id": 7,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||criteo.com^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
     }
   },
   {
     "id": 8,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
       "urlFilter": "||popads.net^",
-      "resourceTypes": ["script", "sub_frame"]
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
     }
   },
   {
     "id": 9,
-    "priority": 1000,
+    "priority": 3000,
     "action": { "type": "block" },
     "condition": {
-      "urlFilter": "||adservice.google.*^",
-      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame"]
+      "urlFilter": "||adservice.google.com^",
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping"]
+    }
+  },
+  {
+    "id": 10,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||popcash.net^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 11,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||adsterra.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "image", "ping"]
+    }
+  },
+  {
+    "id": 12,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||propellerads.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 13,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||monetag.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 14,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||hilltopads.net^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 15,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||exoclick.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "image", "ping"]
+    }
+  },
+  {
+    "id": 16,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||juicyads.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "image", "ping"]
+    }
+  },
+  {
+    "id": 17,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||adcash.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 18,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||clickadu.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 19,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||onclkds.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 20,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||deloton.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
+    }
+  },
+  {
+    "id": 21,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||trafficjunky.net^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "image", "ping"]
+    }
+  },
+  {
+    "id": 22,
+    "priority": 3000,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||syndication.realsrv.com^",
+      "resourceTypes": ["main_frame", "sub_frame", "script", "xmlhttprequest", "ping"]
     }
   }
 ]
