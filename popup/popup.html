@@ -1,0 +1,514 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>AstraShield Ultra</title>
+  <style>
+    :root {
+      --bg: #0B0F19;
+      --card-bg: rgba(22, 27, 34, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #F0F6FC;
+      --text-muted: #8B949E;
+      --accent-green: #10B981;
+      --accent-green-glow: rgba(16, 185, 129, 0.35);
+      --accent-amber: #F59E0B;
+      --accent-amber-glow: rgba(245, 158, 11, 0.35);
+      --accent-red: #EF4444;
+      --accent-red-glow: rgba(239, 68, 68, 0.35);
+      --accent-blue: #38BDF8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      width: 340px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #059669, #10B981);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px var(--accent-green-glow);
+      transition: all 0.3s ease;
+    }
+
+    .brand-icon.paused {
+      background: linear-gradient(135deg, #D97706, #F59E0B);
+      box-shadow: 0 0 12px var(--accent-amber-glow);
+    }
+
+    .brand-icon.off {
+      background: linear-gradient(135deg, #DC2626, #EF4444);
+      box-shadow: 0 0 12px var(--accent-red-glow);
+    }
+
+    .brand-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: #FFFFFF;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.2px;
+    }
+
+    .brand-version {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      transition: all 0.25s ease;
+    }
+
+    .status-badge.site-paused {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--accent-amber);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .status-badge.global-off {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--accent-red);
+      border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    /* Master Shield Hero Button */
+    .hero-power {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .hero-power:hover {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .hero-power:active {
+      transform: scale(0.99);
+    }
+
+    .hero-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #FFFFFF;
+    }
+
+    .hero-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Switch Component */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #334155;
+      transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-green);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Site Card */
+    .site-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(8px);
+    }
+
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .site-domain-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      max-width: 200px;
+    }
+
+    .site-globe-icon {
+      width: 16px;
+      height: 16px;
+      fill: var(--accent-blue);
+      flex-shrink: 0;
+    }
+
+    .site-domain {
+      font-size: 13px;
+      font-weight: 600;
+      color: #FFFFFF;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .site-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .site-toggle-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .reload-prompt {
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--accent-blue);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      display: none;
+    }
+
+    .reload-prompt:hover {
+      background: rgba(56, 189, 248, 0.18);
+    }
+
+    /* Modules List */
+    .modules-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(8px);
+    }
+
+    .module-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .module-item:last-child {
+      border-bottom: none;
+    }
+
+    .module-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .module-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #E2E8F0;
+    }
+
+    .module-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .mini-switch {
+      width: 34px;
+      height: 18px;
+    }
+
+    .mini-switch .slider:before {
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      bottom: 2px;
+    }
+
+    .mini-switch input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    /* Stats Bar */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 14px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      color: var(--accent-blue);
+    }
+
+    .stat-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #64748B;
+      padding-top: 4px;
+    }
+
+    .whitelist-btn {
+      color: var(--accent-blue);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .whitelist-btn:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div id="brandIcon" class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/></svg>
+      </div>
+      <div>
+        <div class="brand-title">AstraShield Ultra</div>
+        <div class="brand-version">v1.1.0 • Manifest V3</div>
+      </div>
+    </div>
+    <div id="statusBadge" class="status-badge">
+      <span class="status-dot"></span> <span id="statusText">PROTEGIDO</span>
+    </div>
+  </div>
+
+  <!-- Master Global Power Switch -->
+  <div id="globalToggleContainer" class="hero-power">
+    <div class="hero-info">
+      <span class="hero-label">Protección General</span>
+      <span id="globalDesc" class="hero-desc">Bloqueando rastreadores y anuncios</span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="globalToggle" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Active Site Card -->
+  <div class="site-card">
+    <div class="site-header">
+      <div class="site-domain-box">
+        <svg class="site-globe-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        <span id="currentDomain" class="site-domain">Cargando...</span>
+      </div>
+      <span id="siteStatusText" style="font-size: 11px; color: var(--accent-green); font-weight: 500;">Activo</span>
+    </div>
+
+    <div class="site-toggle-row">
+      <span class="site-toggle-label">Pausar en este sitio</span>
+      <label class="switch mini-switch">
+        <input type="checkbox" id="sitePauseToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div id="reloadPrompt" class="reload-prompt">
+      <span>🔄 Cambios listos. Clic para recargar</span>
+      <strong style="font-size: 12px;">→</strong>
+    </div>
+  </div>
+
+  <!-- Granular Modules -->
+  <div class="modules-card">
+    <div class="module-item">
+      <div class="module-info">
+        <span class="module-name">YouTube Ad Shield</span>
+        <span class="module-desc">Poda de JSON & Salto 16x</span>
+      </div>
+      <label class="switch mini-switch">
+        <input type="checkbox" id="shieldYoutube" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="module-item">
+      <div class="module-info">
+        <span class="module-name">Anti-Popups & Overlays</span>
+        <span class="module-desc">Destructor de clickjacking</span>
+      </div>
+      <label class="switch mini-switch">
+        <input type="checkbox" id="shieldPopups" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="module-item">
+      <div class="module-info">
+        <span class="module-name">Stealth Anti-Detección</span>
+        <span class="module-desc">Disfraz [native code]</span>
+      </div>
+      <label class="switch mini-switch">
+        <input type="checkbox" id="shieldStealth" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="module-item">
+      <div class="module-info">
+        <span class="module-name">Filtrado Cosmético</span>
+        <span class="module-desc">Ocultar huecos y banners</span>
+      </div>
+      <label class="switch mini-switch">
+        <input type="checkbox" id="shieldCosmetic" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-box">
+      <div class="stat-val">47,490</div>
+      <div class="stat-lbl">Reglas DNR (EasyList)</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color: var(--accent-green);">0</div>
+      <div class="stat-lbl">Lista Blanca Corporativa</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Eyeo-Free Engine</span>
+    <span id="pausedSitesCount" class="whitelist-btn">0 sitios pausados</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
